@@ -4,11 +4,17 @@ const PORT = 8080; // Default port 8080
 
 // Middleware
 app.set("view engine", "ejs");
+app.use(express.urlencoded({ extended: true })); //Express library's body parsing middleware to make the POST request body human readable
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
+
+function generateRandomString() {
+  const newStr = Math.random().toString(36).slice(7);
+  console.log(newStr);
+}
 
 app.get("/", (req, res) => {
   res.send("Hello!");
@@ -27,9 +33,18 @@ app.get("/urls", (req, res) => {
   res.render("urls_index", templateVars);
 });
 
+app.get("/urls/new", (req, res) => {
+  res.render("urls_new");
+});
+
 app.get("/urls/:id", (req, res) => {
   const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id] };
   res.render("urls_show", templateVars);
+});
+
+app.post("/urls", (req, res) => {
+  console.log(req.body); // Log the POST request body to the console
+  res.send("Ok"); // Respond with 'Ok' (we will replace this)
 });
 
 app.listen(PORT, () => {
