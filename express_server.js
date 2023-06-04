@@ -14,6 +14,7 @@ const urlDatabase = {
 function generateRandomString() {
   const newStr = Math.random().toString(36).slice(7);
   console.log(newStr);
+  return newStr;
 }
 
 app.get("/", (req, res) => {
@@ -42,9 +43,17 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
+app.get("/u/:id", (req, res) => {
+  const longURL = urlDatabase[req.params.id];
+  res.redirect(longURL);
+});
+
 app.post("/urls", (req, res) => {
+  const key = generateRandomString();
   console.log(req.body); // Log the POST request body to the console
-  res.send("Ok"); // Respond with 'Ok' (we will replace this)
+  urlDatabase[key] = req.body["longURL"];
+  console.log(urlDatabase);
+  res.redirect(`/urls/${key}`);
 });
 
 app.listen(PORT, () => {
