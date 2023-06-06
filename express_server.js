@@ -43,6 +43,7 @@ app.get("/urls/:id", (req, res) => {
   res.render("urls_show", templateVars);
 });
 
+// Redirects shortURL link to longURL
 app.get("/u/:id", (req, res) => {
   const longURL = urlDatabase[req.params.id];
   res.redirect(longURL);
@@ -59,6 +60,13 @@ app.post("/urls", (req, res) => {
 // Route to delete URL Resource
 app.post("/urls/:id/delete", (req, res) => {
   delete urlDatabase[req.params.id];
+  res.redirect("/urls");
+});
+
+// Update a URL with a new longURL value
+app.post("/urls/:id", (req, res) => {
+  //update the keys value inside the local database
+  urlDatabase[req.params.id] = req.body["longURL"];
   res.redirect("/urls");
 });
 
