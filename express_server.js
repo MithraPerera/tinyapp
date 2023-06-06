@@ -1,10 +1,12 @@
 const express = require('express');
+const cookieParser = require('cookie-parser')
 const app = express();
 const PORT = 8080; // Default port 8080
 
 // Middleware
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true })); //Express library's body parsing middleware to make the POST request body human readable
+app.use(cookieParser())
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
@@ -29,17 +31,28 @@ app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
 
+// Home Page Route
 app.get("/urls", (req, res) => {
-  const templateVars = { urls: urlDatabase };
+  const templateVars = {
+    urls: urlDatabase,
+    username: req.cookies['username']
+  };
   res.render("urls_index", templateVars);
 });
 
+// Create New URL Route
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const user = { username: req.cookies['username'] };
+  res.render("urls_new", user);
 });
 
+// Edit URL Route
 app.get("/urls/:id", (req, res) => {
-  const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id] };
+  const templateVars = {
+    id: req.params.id,
+    longURL: urlDatabase[req.params.id],
+    username: req.cookies['username']
+  };
   res.render("urls_show", templateVars);
 });
 
