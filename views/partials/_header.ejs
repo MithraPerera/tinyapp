@@ -27,13 +27,15 @@
             style="width: 250px; margin: 0.5em"
           />
           <button type="submit" class="btn btn-outline-dark">Login</button>
+        </form>
         <% } else { %>
+        <form class="form-inline" action="/logout" method="POST">
           <div class="form-inline align-content-center">
-            <h5 class="m-auto pr-2" style="color: white">Logged in as: <%= username %></h5>
+            <h6 class="m-auto pr-3" style="color: white">Logged in as: <%= username %></h6>
             <button type="submit" class="btn btn-outline-dark">Logout</button>
           </div>
-        <% } %>
         </form>
+        <% } %>
     </div>
   </nav>
 </header>
