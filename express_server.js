@@ -62,6 +62,11 @@ app.get("/u/:id", (req, res) => {
   res.redirect(longURL);
 });
 
+// Register Page
+app.get("/register", (req, res) => {
+  res.render("registration");
+});
+
 app.post("/urls", (req, res) => {
   const key = generateRandomString();
   console.log(req.body); // Log the POST request body to the console
