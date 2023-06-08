@@ -13,36 +13,62 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = {
+  userRandomID: {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "purple-monkey-dinosaur",
+  },
+  user2RandomID: {
+    id: "user2RandomID",
+    email: "smpere7@gmail.com",
+    password: "dishwasher-funk",
+  },
+};
+
+//Helper Functions
+
 function generateRandomString() {
   const newStr = Math.random().toString(36).slice(7);
-  console.log(newStr);
+  // console.log(newStr);
   return newStr;
 }
 
-app.get("/", (req, res) => {
-  res.send("Hello!");
-});
+// used in Register POST route to check if email is valid
+function checkUserEmailExists(emailToCheck) {
+  for (const user in users) {
+    if (users[user].email === emailToCheck) {
+      return true;
+    }
+  }
+  return false;
+}
 
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
-});
+//Test Routes
+// app.get("/", (req, res) => {
+//   res.send("Hello!");
+// });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
+// app.get("/urls.json", (req, res) => {
+//   res.json(urlDatabase);
+// });
+
+// app.get("/hello", (req, res) => {
+//   res.send("<html><body>Hello <b>World</b></body></html>\n");
+// });
 
 // Home Page Route
 app.get("/urls", (req, res) => {
   const templateVars = {
     urls: urlDatabase,
-    username: req.cookies['username']
+    username: users[req.cookies['user_id']]["email"]
   };
   res.render("urls_index", templateVars);
 });
 
 // Create New URL Route
 app.get("/urls/new", (req, res) => {
-  const user = { username: req.cookies['username'] };
+  const user = { username: users[req.cookies['user_id']]["email"] };
   res.render("urls_new", user);
 });
 
@@ -51,7 +77,7 @@ app.get("/urls/:id", (req, res) => {
   const templateVars = {
     id: req.params.id,
     longURL: urlDatabase[req.params.id],
-    username: req.cookies['username']
+    username: users[req.cookies['user_id']]["email"]
   };
   res.render("urls_show", templateVars);
 });
@@ -69,9 +95,9 @@ app.get("/register", (req, res) => {
 
 app.post("/urls", (req, res) => {
   const key = generateRandomString();
-  console.log(req.body); // Log the POST request body to the console
+  // console.log(req.body); // Log the POST request body to the console
   urlDatabase[key] = req.body["longURL"];
-  console.log(urlDatabase);
+  // console.log(urlDatabase);
   res.redirect(`/urls/${key}`);
 });
 
@@ -99,6 +125,21 @@ app.post("/login", (req, res) => {
 app.post("/logout", (req, res) => {
   res.clearCookie("username");
   res.redirect("/urls");
+});
+
+// Handling user registration form data
+app.post("/register", (req, res) => {
+  const email = req.body["email"];
+  const password = req.body["password"];
+  if (email === "" || password === "" || checkUserEmailExists(email)) {
+    res.sendStatus(400);
+  } else {
+    const id = generateRandomString();
+    users[id] = { id: id, email: email, password: password };
+    console.log(users);
+    res.cookie("user_id", id);
+    res.redirect("urls");
+  }
 });
 
 
