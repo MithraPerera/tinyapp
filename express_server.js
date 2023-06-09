@@ -38,7 +38,7 @@ function generateRandomString() {
 function checkUserEmailExists(emailToCheck) {
   for (const user in users) {
     if (users[user].email === emailToCheck) {
-      return true;
+      return user;
     }
   }
   return false;
@@ -61,14 +61,14 @@ function checkUserEmailExists(emailToCheck) {
 app.get("/urls", (req, res) => {
   const templateVars = {
     urls: urlDatabase,
-    username: users[req.cookies['user_id']]["email"]
+    username: users[req.cookies['user_id']]?.["email"]
   };
   res.render("urls_index", templateVars);
 });
 
 // Create New URL Route
 app.get("/urls/new", (req, res) => {
-  const user = { username: users[req.cookies['user_id']]["email"] };
+  const user = { username: users[req.cookies['user_id']]?.["email"] };
   res.render("urls_new", user);
 });
 
@@ -77,7 +77,7 @@ app.get("/urls/:id", (req, res) => {
   const templateVars = {
     id: req.params.id,
     longURL: urlDatabase[req.params.id],
-    username: users[req.cookies['user_id']]["email"]
+    username: users[req.cookies['user_id']]?.["email"]
   };
   res.render("urls_show", templateVars);
 });
@@ -91,6 +91,11 @@ app.get("/u/:id", (req, res) => {
 // Register Page
 app.get("/register", (req, res) => {
   res.render("registration");
+});
+
+// Login Page
+app.get("/login", (req, res) => {
+  res.render("login");
 });
 
 app.post("/urls", (req, res) => {
@@ -116,15 +121,22 @@ app.post("/urls/:id", (req, res) => {
 
 // Username Login Route
 app.post("/login", (req, res) => {
-  const username = req.body["username"];
-  res.cookie("username", username);
-  res.redirect("/urls");
+  const email = req.body["email"];
+  const password = req.body["password"];
+  if (email === "" || password === "") {
+    res.sendStatus(400);
+  } else if (!checkUserEmailExists(email) || !(password === users[checkUserEmailExists(email)].password)) {
+    res.sendStatus(403);
+  } else {
+    res.cookie("user_id", checkUserEmailExists(email));
+    res.redirect("urls");
+  }
 });
 
 // User Logout Route
 app.post("/logout", (req, res) => {
-  res.clearCookie("username");
-  res.redirect("/urls");
+  res.clearCookie("user_id");
+  res.redirect("/login");
 });
 
 // Handling user registration form data
