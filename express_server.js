@@ -9,8 +9,14 @@ app.use(express.urlencoded({ extended: true })); //Express library's body parsin
 app.use(cookieParser())
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: {
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW",
+  },
+  i3BoGr: {
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW",
+  },
 };
 
 const users = {
@@ -30,7 +36,6 @@ const users = {
 
 function generateRandomString() {
   const newStr = Math.random().toString(36).slice(7);
-  // console.log(newStr);
   return newStr;
 }
 
@@ -42,6 +47,17 @@ function checkUserEmailExists(emailToCheck) {
     }
   }
   return false;
+}
+
+// Return an object of objects with the user_id being the same for all sub objects
+function urlsForUser(id) {
+  let userUrls = {};
+  for (const key in urlDatabase) {
+    if (urlDatabase[key]["userID"] === id) {
+      userUrls[key] = urlDatabase[key]["longURL"];
+    }
+  }
+  return userUrls;
 }
 
 //Test Routes
@@ -59,64 +75,114 @@ function checkUserEmailExists(emailToCheck) {
 
 // Home Page Route
 app.get("/urls", (req, res) => {
-  const templateVars = {
-    urls: urlDatabase,
-    username: users[req.cookies['user_id']]?.["email"]
-  };
-  res.render("urls_index", templateVars);
+  if (req.cookies["user_id"]) {
+    const templateVars = {
+      urls: urlsForUser(req.cookies["user_id"]),
+      username: users[req.cookies['user_id']]?.["email"]
+    };
+    res.render("urls_index", templateVars);
+  } else {
+    res.send("Please login to view homepage.");
+  }
 });
 
-// Create New URL Route
+// New URL Page
 app.get("/urls/new", (req, res) => {
-  const user = { username: users[req.cookies['user_id']]?.["email"] };
-  res.render("urls_new", user);
+  if (req.cookies["user_id"]) {
+    const user = { username: users[req.cookies['user_id']]?.["email"] };
+    res.render("urls_new", user);
+  } else {
+    res.redirect("/login");
+  }
 });
 
-// Edit URL Route
+// Edit URL Page
 app.get("/urls/:id", (req, res) => {
-  const templateVars = {
-    id: req.params.id,
-    longURL: urlDatabase[req.params.id],
-    username: users[req.cookies['user_id']]?.["email"]
-  };
-  res.render("urls_show", templateVars);
+  if (req.cookies["user_id"]) {
+    const templateVars = {
+      id: req.params.id,
+      longURL: urlDatabase[req.params.id].longURL,
+      username: users[req.cookies['user_id']]?.["email"]
+    };
+    res.render("urls_show", templateVars);
+  } else {
+    res.send("Cannot edit URL because you are not signed in.");
+  }
 });
 
 // Redirects shortURL link to longURL
 app.get("/u/:id", (req, res) => {
-  const longURL = urlDatabase[req.params.id];
-  res.redirect(longURL);
+  const longURL = urlDatabase[req.params.id].longURL;
+  if (longURL) {
+    res.redirect(longURL);
+  } else {
+    res.send("Tiny URL that you are trying to access does not exist.");
+  }
 });
 
 // Register Page
 app.get("/register", (req, res) => {
-  res.render("registration");
+  if (req.cookies["user_id"]) {
+    res.redirect("/urls");
+  } else {
+    res.render("registration");
+  }
 });
 
 // Login Page
 app.get("/login", (req, res) => {
-  res.render("login");
+  // If user is logged in, send them to urls homepage. Otherwise send them to login page.
+  if (req.cookies["user_id"]) {
+    res.redirect("/urls");
+  } else {
+    res.render("login");
+  }
 });
 
+// New URL creation form submit logic
 app.post("/urls", (req, res) => {
-  const key = generateRandomString();
-  // console.log(req.body); // Log the POST request body to the console
-  urlDatabase[key] = req.body["longURL"];
-  // console.log(urlDatabase);
-  res.redirect(`/urls/${key}`);
+  if (req.cookies["user_id"]) {
+    const key = generateRandomString();
+    // console.log("Url Database before: ", urlDatabase);
+    urlDatabase[key] = { longURL: req.body["longURL"], userID: req.cookies["user_id"] };
+    // console.log("Url Database after: ", urlDatabase);
+    res.redirect(`/urls/${key}`);
+  } else {
+    res.send("Cannot shorten URL's because you are not logged in.")
+  }
 });
 
 // Route to delete URL Resource
 app.post("/urls/:id/delete", (req, res) => {
-  delete urlDatabase[req.params.id];
-  res.redirect("/urls");
+  // Check if user is signed in
+  if (req.cookies["user_id"]) {
+    // Check if url id exists and url is owned by the user that is signed in
+    if (urlDatabase[req.params.id] && (urlDatabase[req.params.id]["userID"] === req.cookies["user_id"])) {
+      delete urlDatabase[req.params.id];
+      res.redirect("/urls");
+    } else {
+      res.sendStatus(404).send("Trying to edit a url that does not exist.");
+    }
+  } else {
+    res.sendStatus(403).send("You are not logged in.");
+  }
 });
 
 // Update a URL with a new longURL value
 app.post("/urls/:id", (req, res) => {
-  //update the keys value inside the local database
-  urlDatabase[req.params.id] = req.body["longURL"];
-  res.redirect("/urls");
+  // Check if user is signed in
+  if (req.cookies["user_id"]) {
+    // Check if url id exists and url is owned by the user that is signed in
+    if (urlDatabase[req.params.id]["userID"] === req.cookies["user_id"]) {
+      //update the keys value inside the local database
+      urlDatabase[req.params.id] = { longURL: req.body["longURL"], userID: req.cookies["user_id"] };
+      res.redirect("/urls");
+    } else {
+      res.sendStatus(404);
+    }
+  } else {
+    res.sendStatus(403);
+  }
 });
 
 // Username Login Route
@@ -148,7 +214,6 @@ app.post("/register", (req, res) => {
   } else {
     const id = generateRandomString();
     users[id] = { id: id, email: email, password: password };
-    console.log(users);
     res.cookie("user_id", id);
     res.redirect("urls");
   }
