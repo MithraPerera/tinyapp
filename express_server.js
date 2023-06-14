@@ -1,5 +1,6 @@
 const express = require('express');
-const cookieParser = require('cookie-parser')
+const cookieParser = require('cookie-parser');
+const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // Default port 8080
 
@@ -191,7 +192,8 @@ app.post("/login", (req, res) => {
   const password = req.body["password"];
   if (email === "" || password === "") {
     res.sendStatus(400);
-  } else if (!checkUserEmailExists(email) || !(password === users[checkUserEmailExists(email)].password)) {
+  } else if (!checkUserEmailExists(email) || !(bcrypt.compareSync(password, users[checkUserEmailExists(email)].password))) {
+    // If the email does not exist OR the password entered does not equal the hashed password stored
     res.sendStatus(403);
   } else {
     res.cookie("user_id", checkUserEmailExists(email));
@@ -209,11 +211,13 @@ app.post("/logout", (req, res) => {
 app.post("/register", (req, res) => {
   const email = req.body["email"];
   const password = req.body["password"];
+  // Save the hash of the password
+  const hashedPassword = bcrypt.hashSync(password, 10);
   if (email === "" || password === "" || checkUserEmailExists(email)) {
     res.sendStatus(400);
   } else {
     const id = generateRandomString();
-    users[id] = { id: id, email: email, password: password };
+    users[id] = { id: id, email: email, password: hashedPassword };
     res.cookie("user_id", id);
     res.redirect("urls");
   }
