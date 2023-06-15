@@ -1,13 +1,22 @@
+const { getUserByEmail, generateRandomString, urlsForUser } = require('./helpers');
 const express = require('express');
-const cookieParser = require('cookie-parser');
+var cookieSession = require('cookie-session');
 const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // Default port 8080
 
-// Middleware
+/* MIDDLEWARE */
+
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true })); //Express library's body parsing middleware to make the POST request body human readable
-app.use(cookieParser())
+app.use(cookieSession({
+  name: 'session',
+  keys: ['key1'],
+  // Cookie Options
+  maxAge: 24 * 60 * 60 * 1000 // 24 hours
+}));
+
+/* DATABASES */
 
 const urlDatabase = {
   b6UTxQ: {
@@ -33,53 +42,14 @@ const users = {
   },
 };
 
-//Helper Functions
-
-function generateRandomString() {
-  const newStr = Math.random().toString(36).slice(7);
-  return newStr;
-}
-
-// used in Register POST route to check if email is valid
-function checkUserEmailExists(emailToCheck) {
-  for (const user in users) {
-    if (users[user].email === emailToCheck) {
-      return user;
-    }
-  }
-  return false;
-}
-
-// Return an object of objects with the user_id being the same for all sub objects
-function urlsForUser(id) {
-  let userUrls = {};
-  for (const key in urlDatabase) {
-    if (urlDatabase[key]["userID"] === id) {
-      userUrls[key] = urlDatabase[key]["longURL"];
-    }
-  }
-  return userUrls;
-}
-
-//Test Routes
-// app.get("/", (req, res) => {
-//   res.send("Hello!");
-// });
-
-// app.get("/urls.json", (req, res) => {
-//   res.json(urlDatabase);
-// });
-
-// app.get("/hello", (req, res) => {
-//   res.send("<html><body>Hello <b>World</b></body></html>\n");
-// });
+/* GET ROUTES */
 
 // Home Page Route
 app.get("/urls", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     const templateVars = {
-      urls: urlsForUser(req.cookies["user_id"]),
-      username: users[req.cookies['user_id']]?.["email"]
+      urls: urlsForUser(req.session.user_id, urlDatabase),
+      username: users[req.session.user_id]?.["email"]
     };
     res.render("urls_index", templateVars);
   } else {
@@ -89,8 +59,8 @@ app.get("/urls", (req, res) => {
 
 // New URL Page
 app.get("/urls/new", (req, res) => {
-  if (req.cookies["user_id"]) {
-    const user = { username: users[req.cookies['user_id']]?.["email"] };
+  if (req.session.user_id) {
+    const user = { username: users[req.session.user_id]?.["email"] };
     res.render("urls_new", user);
   } else {
     res.redirect("/login");
@@ -99,11 +69,11 @@ app.get("/urls/new", (req, res) => {
 
 // Edit URL Page
 app.get("/urls/:id", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     const templateVars = {
       id: req.params.id,
       longURL: urlDatabase[req.params.id].longURL,
-      username: users[req.cookies['user_id']]?.["email"]
+      username: users[req.session.user_id]?.["email"]
     };
     res.render("urls_show", templateVars);
   } else {
@@ -123,7 +93,7 @@ app.get("/u/:id", (req, res) => {
 
 // Register Page
 app.get("/register", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     res.redirect("/urls");
   } else {
     res.render("registration");
@@ -133,19 +103,21 @@ app.get("/register", (req, res) => {
 // Login Page
 app.get("/login", (req, res) => {
   // If user is logged in, send them to urls homepage. Otherwise send them to login page.
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     res.redirect("/urls");
   } else {
     res.render("login");
   }
 });
 
+/* POST ROUTES */
+
 // New URL creation form submit logic
 app.post("/urls", (req, res) => {
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     const key = generateRandomString();
     // console.log("Url Database before: ", urlDatabase);
-    urlDatabase[key] = { longURL: req.body["longURL"], userID: req.cookies["user_id"] };
+    urlDatabase[key] = { longURL: req.body["longURL"], userID: req.session.user_id };
     // console.log("Url Database after: ", urlDatabase);
     res.redirect(`/urls/${key}`);
   } else {
@@ -156,9 +128,9 @@ app.post("/urls", (req, res) => {
 // Route to delete URL Resource
 app.post("/urls/:id/delete", (req, res) => {
   // Check if user is signed in
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     // Check if url id exists and url is owned by the user that is signed in
-    if (urlDatabase[req.params.id] && (urlDatabase[req.params.id]["userID"] === req.cookies["user_id"])) {
+    if (urlDatabase[req.params.id] && (urlDatabase[req.params.id]["userID"] === req.session.user_id)) {
       delete urlDatabase[req.params.id];
       res.redirect("/urls");
     } else {
@@ -172,11 +144,11 @@ app.post("/urls/:id/delete", (req, res) => {
 // Update a URL with a new longURL value
 app.post("/urls/:id", (req, res) => {
   // Check if user is signed in
-  if (req.cookies["user_id"]) {
+  if (req.session.user_id) {
     // Check if url id exists and url is owned by the user that is signed in
-    if (urlDatabase[req.params.id]["userID"] === req.cookies["user_id"]) {
+    if (urlDatabase[req.params.id]["userID"] === req.session.user_id) {
       //update the keys value inside the local database
-      urlDatabase[req.params.id] = { longURL: req.body["longURL"], userID: req.cookies["user_id"] };
+      urlDatabase[req.params.id] = { longURL: req.body["longURL"], userID: req.session.user_id };
       res.redirect("/urls");
     } else {
       res.sendStatus(404);
@@ -192,18 +164,19 @@ app.post("/login", (req, res) => {
   const password = req.body["password"];
   if (email === "" || password === "") {
     res.sendStatus(400);
-  } else if (!checkUserEmailExists(email) || !(bcrypt.compareSync(password, users[checkUserEmailExists(email)].password))) {
+  } else if (!getUserByEmail(email, users) || !(bcrypt.compareSync(password, users[getUserByEmail(email, users)].password))) {
     // If the email does not exist OR the password entered does not equal the hashed password stored
     res.sendStatus(403);
   } else {
-    res.cookie("user_id", checkUserEmailExists(email));
+    req.session.user_id = getUserByEmail(email, users);
     res.redirect("urls");
   }
 });
 
 // User Logout Route
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_id");
+  // Destroy the session
+  req.session = null;
   res.redirect("/login");
 });
 
@@ -213,12 +186,12 @@ app.post("/register", (req, res) => {
   const password = req.body["password"];
   // Save the hash of the password
   const hashedPassword = bcrypt.hashSync(password, 10);
-  if (email === "" || password === "" || checkUserEmailExists(email)) {
+  if (email === "" || password === "" || getUserByEmail(email, users)) {
     res.sendStatus(400);
   } else {
     const id = generateRandomString();
     users[id] = { id: id, email: email, password: hashedPassword };
-    res.cookie("user_id", id);
+    req.session.user_id = id;
     res.redirect("urls");
   }
 });
