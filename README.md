@@ -15,7 +15,8 @@ TinyApp is a full stack web application built with Node and Express that allows 
 
 ### Other Features
 
-- Register and login to a user account
+- Register and login to a user account with authentication protection
+- Reacts appropriately to the user's logged-in state
 - Store created tinyurls to an associated account
 - Using encrypted passwords and cookies for better security
 
