@@ -44,6 +44,14 @@ const users = {
 
 /* GET ROUTES */
 
+app.get("/", (req, res) => {
+  if (req.session.user_id) {
+    res.redirect("/urls");
+  } else {
+    res.redirect("/login");
+  }
+});
+
 // Home Page Route
 app.get("/urls", (req, res) => {
   if (req.session.user_id) {
@@ -96,7 +104,8 @@ app.get("/register", (req, res) => {
   if (req.session.user_id) {
     res.redirect("/urls");
   } else {
-    res.render("registration");
+    const user = { username: users[req.session.user_id]?.["email"] };
+    res.render("registration", user);
   }
 });
 
@@ -106,7 +115,8 @@ app.get("/login", (req, res) => {
   if (req.session.user_id) {
     res.redirect("/urls");
   } else {
-    res.render("login");
+    const user = { username: users[req.session.user_id]?.["email"] };
+    res.render("login", user);
   }
 });
 
